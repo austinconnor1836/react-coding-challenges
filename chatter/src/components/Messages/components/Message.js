@@ -4,6 +4,7 @@ import cx from 'classnames';
 const ME = 'me';
 
 export default function Message({ nextMessage, message, botTyping }) {
+  console.log('message: ', message)
   return (
     <p
       className={cx(
