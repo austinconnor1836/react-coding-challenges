@@ -54,18 +54,22 @@ function Messages() {
     };
 
     setMessages(prev => [...prev, newMessage]);
-    socket.emit('user-message', message);
     setLatestMessage(message);
     setMessage('');
     playSend();
 
+    try {
+      socket.emit('user-message', message);
+    } catch (err) {
+      console.error('Failed to send message via socket:', err);
+    }
   }, [message, setLatestMessage, playSend]);
 
   useEffect(() => {
     setLatestMessage("Hi! My name's Botty.");
   }, []);
 
-  // Scroll on every new message and isTyping change
+  // Scroll when messages or typing indicator change
   useEffect(() => {
     const t = setTimeout(scrollToBottom, 50);
     return () => clearTimeout(t);
@@ -74,6 +78,9 @@ function Messages() {
   useEffect(() => {
     const handleTyping = () => {
       setIsTyping(true);
+
+      // Fallback timeout in case bot-message fails
+      setTimeout(() => setIsTyping(false), 5000);
     };
 
     const handleBotMessage = (message) => {
@@ -87,16 +94,30 @@ function Messages() {
       setMessages(prev => [...prev, newMessage]);
       setLatestMessage(message);
       playReceive();
+    };
 
-      setTimeout(scrollToBottom, 100);
+    const handleSocketError = (err) => {
+      console.error('Socket connection error:', err);
+    };
+
+    const handleDisconnect = (reason) => {
+      console.warn('Socket disconnected:', reason);
     };
 
     socket.on('bot-typing', handleTyping);
     socket.on('bot-message', handleBotMessage);
 
+    // error handling
+    socket.on('connect_error', handleSocketError);
+    socket.on('disconnect', handleDisconnect);
+
     return () => {
       socket.off('bot-typing', handleTyping);
       socket.off('bot-message', handleBotMessage);
+      
+      // error handling
+      socket.off('connect_error', handleSocketError);
+      socket.off('disconnect', handleDisconnect);
     };
   }, [playReceive, setLatestMessage]);
 
